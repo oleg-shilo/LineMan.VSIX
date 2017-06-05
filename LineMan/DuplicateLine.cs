@@ -5,6 +5,7 @@ using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Text.Formatting;
 using Microsoft.VisualStudio.TextManager.Interop;
+using System.Linq;
 
 namespace OlegShilo.LineMan
 {
@@ -17,172 +18,97 @@ namespace OlegShilo.LineMan
             this.txtMgr = txtMgr;
         }
 
-        public void Execute()
+        public void Execute(bool commentOriginal = false)
         {
-            IWpfTextView textView = GetTextView();
+            IWpfTextView textView = txtMgr.GetTextView();
 
             ITextSnapshot snapshot = textView.TextSnapshot;
 
             if (snapshot != snapshot.TextBuffer.CurrentSnapshot)
                 return;
 
-            string sourceText = "";
-            int selectionLastLineNumber = 0;
-
-            int caretLineOffset = 0;
-            int insertionPosition = 0;
-            int selectionStartOffset = 0;
-            bool noInitialSelection = false;
+            Extensions.RefreshCommentForCurrentDocument();
 
             if (!textView.Selection.IsEmpty)
             {
-                string textOffset = "";
+                var selectionStart = textView.Selection.Start;
+                var selectionEnd = textView.Selection.End;
 
-                if (textView.Selection.Start < textView.Selection.End)
+                if (textView.Selection.Start > textView.Selection.End)
+                    Extensions.Swap(ref selectionStart, ref selectionEnd);
+
+                var selectionStartLine = selectionStart.Position.GetContainingLine();
+                var selectionEndLine = selectionEnd.Position.GetContainingLine();
+
+                var blockTextStart = selectionStartLine.Start.Position;
+                string blockText = textView.TextBuffer.CurrentSnapshot.GetText(selectionStartLine.Start.Position,
+                                                                               selectionEndLine.End.Position - selectionStartLine.Start.Position);
+
+                string selectedText = textView.TextBuffer.CurrentSnapshot.GetText(selectionStart.Position,
+                                                                                  selectionEnd.Position - selectionStart.Position);
+
+                var caretPositionWithinBlock = textView.GetCaretPosition() - selectionStartLine.Start.Position;
+                var nonSelectedTextLeftOffset = selectionStart.Position - selectionStartLine.Start.Position;
+
+                string textOffset = new string(' ', nonSelectedTextLeftOffset);
+                string duplicatedText = textOffset + selectedText;
+
+                string replacementText;
+
+                if (commentOriginal)
                 {
-                    caretLineOffset = textView.GetCaretPosition() - textView.Selection.Start.Position.GetContainingLine().Start.Position;
-                    selectionStartOffset = textView.Selection.Start.Position - textView.Selection.Start.Position.GetContainingLine().Start.Position;
-                    textOffset = textView.GetText().Substring(textView.Selection.Start.Position.GetContainingLine().Start.Position, selectionStartOffset);
+                    var commentedText = blockText.Comment();
+
+                    replacementText = commentedText + Environment.NewLine + duplicatedText;
                 }
                 else
                 {
-                    caretLineOffset = textView.GetCaretPosition() - textView.Selection.End.Position.GetContainingLine().Start.Position;
-                    selectionStartOffset = textView.Selection.End.Position - textView.Selection.End.Position.GetContainingLine().Start.Position;
-                    textOffset = textView.GetText().Substring(textView.Selection.End.Position.GetContainingLine().Start.Position, selectionStartOffset);
+                    replacementText = blockText + Environment.NewLine + duplicatedText;
                 }
 
-                textOffset = textOffset.ToWhiteSpaceString();
-                selectionLastLineNumber = textView.Selection.End.Position.GetContainingLine().LineNumber;
+                using (ITextEdit edit = textView.TextBuffer.CreateEdit())
+                {
+                    edit.Replace(new Span(blockTextStart, blockText.Length), replacementText);
+                    edit.Apply();
+                }
 
-                sourceText = textOffset + textView.TextBuffer.CurrentSnapshot.GetText(textView.Selection.Start.Position, textView.Selection.End.Position - textView.Selection.Start.Position) + "\r\n";
+                var firstDuplicatedTextLine = textView.GetLine(selectionEndLine.LineNumber + 1);
+
+                int newSelectionStart = firstDuplicatedTextLine.Start.Position + nonSelectedTextLeftOffset;
+                int newSelectionLength = Math.Min(selectedText.Length, textView.GetText().Length - newSelectionStart);
 
                 textView.Selection.Clear();
+                textView.SetSelection(newSelectionStart, newSelectionLength);
+
+                textView.MoveCaretTo(firstDuplicatedTextLine.Start.Position + caretPositionWithinBlock);
             }
             else
             {
-                noInitialSelection = true;
-                selectionStartOffset = 0;
-                selectionLastLineNumber = textView.Caret.ContainingTextViewLine.End.GetContainingLine().LineNumber;
-                caretLineOffset = textView.GetCaretPosition() - textView.Caret.ContainingTextViewLine.Start.Position;
+                int selectionLastLineNumber = textView.Caret.ContainingTextViewLine.End.GetContainingLine().LineNumber;
+                int caretLineOffset = textView.GetCaretPosition() - textView.Caret.ContainingTextViewLine.Start.Position;
 
-                sourceText = textView.Caret.ContainingTextViewLine.ExtentIncludingLineBreak.GetText();
-            }
+                int areaStart = textView.Caret.ContainingTextViewLine.Start.Position;
+                int areaEnd = textView.Caret.ContainingTextViewLine.End.Position;
 
-            try
-            {
-                ITextSnapshotLine nextLine = textView.GetLine(selectionLastLineNumber + 1);
-                insertionPosition = nextLine.Start.Position;
-            }
-            catch
-            {
-                textView.Insert(textView.TextSnapshot.Length, "\r\n");
-                insertionPosition = textView.TextSnapshot.Length;
-            }
+                string text = textView.TextBuffer.CurrentSnapshot.GetText(areaStart, areaEnd - areaStart);
+                string replacementText;
 
-            textView.Insert(insertionPosition, sourceText);
-
-            if (!noInitialSelection)
-                textView.SetSelection(insertionPosition + selectionStartOffset, sourceText.Length - selectionStartOffset - 2); //all insertion s end with "\r\n" so exclude it from selection
-            textView.MoveCaretTo(insertionPosition + caretLineOffset);
-        }
-
-        IWpfTextView GetTextView()
-        {
-            return GetViewHost().TextView;
-        }
-
-        IWpfTextViewHost GetViewHost()
-        {
-            object holder;
-            Guid guidViewHost = DefGuidList.guidIWpfTextViewHost;
-            GetUserData().GetData(ref guidViewHost, out holder);
-            return (IWpfTextViewHost)holder;
-        }
-
-        IVsUserData GetUserData()
-        {
-            int mustHaveFocus = 1;//means true
-            IVsTextView currentTextView;
-            txtMgr.GetActiveView(mustHaveFocus, null, out currentTextView);
-
-            if (currentTextView is IVsUserData)
-                return currentTextView as IVsUserData;
-            else
-                throw new ApplicationException("No text view is currently open");
-            // Console.WriteLine("No text view is currently open"); return;
-        }
-    }
-
-    static class Extensions
-    {
-        public static void SetSelection(this IWpfTextView obj, int start, int length)
-        {
-            SnapshotPoint selectionStart = new SnapshotPoint(obj.TextSnapshot, start);
-            var selectionSpan = new SnapshotSpan(selectionStart, length);
-
-            obj.Selection.Select(selectionSpan, false);
-        }
-
-        public static void MoveCaretTo(this IWpfTextView obj, int position)
-        {
-            obj.Caret.MoveTo(new SnapshotPoint(obj.TextSnapshot, position));
-        }
-
-        public static ITextSnapshotLine GetLine(this IWpfTextView obj, int lineNumber)
-        {
-            return obj.TextSnapshot.GetLineFromLineNumber(lineNumber);
-        }
-
-        public static ITextSnapshotLine GetLineFromPosition(this IWpfTextView obj, int position)
-        {
-            return obj.TextSnapshot.GetLineFromPosition(position);
-        }
-
-        public static int GetCaretPosition(this IWpfTextView obj)
-        {
-            return obj.Caret.Position.BufferPosition;
-        }
-
-        public static bool IsCaretClosToHorizontalEdge(this IWpfTextView textView, bool top)
-        {
-            var caretPos = textView.Caret.Position.BufferPosition;
-            var charBounds = textView.GetTextViewLineContainingBufferPosition(caretPos)
-                                     .GetCharacterBounds(caretPos);
-
-            if (top)
-                return (charBounds.Top - textView.ViewportTop) < 50;
-            else
-                return (textView.ViewportBottom - charBounds.Bottom) < 50;
-        }
-
-        public static ITextViewLine GetCaretLine(this IWpfTextView obj)
-        {
-            return obj.Caret.ContainingTextViewLine;
-        }
-
-        public static void Insert(this IWpfTextView obj, int position, string text)
-        {
-            ITextEdit edit = obj.TextSnapshot.TextBuffer.CreateEdit();
-            edit.Insert(position, text);
-            edit.Apply();
-        }
-
-        public static string GetText(this IWpfTextView obj)
-        {
-            return obj.TextSnapshot.GetText();
-        }
-
-        public static string ToWhiteSpaceString(this string obj)
-        {
-            StringBuilder sb = new StringBuilder();
-
-            foreach (char c in obj.ToCharArray())
-                if (c == '\n' || c == '\r' || c == '\t' || c == ' ')
-                    sb.Append(c);
+                if (commentOriginal)
+                    replacementText = text.CommentText(text.IndexOfNonWhitespace(), true) + Environment.NewLine + text;
                 else
-                    sb.Append(' ');
+                    replacementText = text + Environment.NewLine + text;
 
-            return sb.ToString();
+                using (ITextEdit edit = textView.TextBuffer.CreateEdit())
+                {
+                    edit.Replace(new Span(areaStart, text.Length), replacementText);
+                    edit.Apply();
+                }
+
+                var line = textView.GetLine(selectionLastLineNumber + 1);
+
+                textView.MoveCaretTo(line.Start.Position + caretLineOffset);
+                return;
+            }
         }
     }
 }

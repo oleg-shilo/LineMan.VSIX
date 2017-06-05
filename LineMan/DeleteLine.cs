@@ -18,7 +18,7 @@ namespace OlegShilo.LineMan
 
         public void Execute()
         {
-            IWpfTextView textView = GetTextView();
+            IWpfTextView textView = txtMgr.GetTextView();
 
             ITextSnapshot snapshot = textView.TextSnapshot;
 
@@ -71,32 +71,6 @@ namespace OlegShilo.LineMan
             ////make a new selection
             //ITextViewLine line = textView.Caret.ContainingTextViewLine;
             //textView.Caret.MoveTo(line, initialStartPosition - 1);
-        }
-
-        IWpfTextView GetTextView()
-        {
-            return GetViewHost().TextView;
-        }
-
-        IWpfTextViewHost GetViewHost()
-        {
-            object holder;
-            Guid guidViewHost = DefGuidList.guidIWpfTextViewHost;
-            GetUserData().GetData(ref guidViewHost, out holder);
-            return (IWpfTextViewHost)holder;
-        }
-
-        IVsUserData GetUserData()
-        {
-            int mustHaveFocus = 1;//means true
-            IVsTextView currentTextView;
-            txtMgr.GetActiveView(mustHaveFocus, null, out currentTextView);
-
-            if (currentTextView is IVsUserData)
-                return currentTextView as IVsUserData;
-            else
-                throw new ApplicationException("No text view is currently open");
-            // Console.WriteLine("No text view is currently open"); return;
         }
     }
 }

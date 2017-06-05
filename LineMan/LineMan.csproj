@@ -47,12 +47,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="Microsoft.VisualStudio.CommandBars, Version=8.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <EmbedInteropTypes>False</EmbedInteropTypes>
     </Reference>
-    
     <Reference Include="Microsoft.VisualStudio.CoreUtility, Version=15.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.VisualStudio.CoreUtility.15.0.26201\lib\net45\Microsoft.VisualStudio.CoreUtility.dll</HintPath>
       <Private>True</Private>
@@ -143,9 +141,6 @@
     <Reference Include="stdole, Version=7.0.3300.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <EmbedInteropTypes>False</EmbedInteropTypes>
     </Reference>
-    
-
-
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.Core" />
@@ -168,11 +163,11 @@
     <Reference Include="EnvDTE90, Version=9.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <EmbedInteropTypes>False</EmbedInteropTypes>
     </Reference>
-    
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DeleteLine.cs" />
     <Compile Include="DuplicateLine.cs" />
+    <Compile Include="Extensions.cs" />
     <Compile Include="Guids.cs" />
     <Compile Include="MoveLine.cs" />
     <Compile Include="Resources.Designer.cs">
@@ -184,6 +179,7 @@
     <Compile Include="LineManPackage.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="PkgCmdID.cs" />
+    <Compile Include="ToggleCommenting.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resources.resx">

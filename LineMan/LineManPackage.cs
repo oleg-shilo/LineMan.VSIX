@@ -1,4 +1,6 @@
-﻿using Microsoft.VisualStudio.Shell;
+﻿using EnvDTE;
+using EnvDTE80;
+using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Text.Operations;
 using Microsoft.VisualStudio.Text.Outlining;
@@ -12,6 +14,24 @@ using System.Runtime.InteropServices;
 
 namespace OlegShilo.LineMan
 {
+    class Global
+    {
+        public static Func<Type, object> GetService;
+
+        public static DTE2 GetDTE2()
+        {
+            DTE dte = (DTE)GetService(typeof(DTE));
+            DTE2 dte2 = dte as DTE2;
+
+            if (dte2 == null)
+            {
+                return null;
+            }
+
+            return dte2;
+        }
+    }
+
     /// <summary>
     /// This is the class that implements the package exposed by this assembly.
     ///
@@ -44,6 +64,7 @@ namespace OlegShilo.LineMan
         /// </summary>
         public LineManPackage()
         {
+            Global.GetService = GetService;
             //Debug.WriteLine(string.Format(CultureInfo.CurrentCulture, "Entering constructor for: {0}", this.ToString()));
         }
 
@@ -60,7 +81,7 @@ namespace OlegShilo.LineMan
         {
             //Debug.WriteLine(string.Format(CultureInfo.CurrentCulture, "Entering Initialize() of: {0}", this.ToString()));
             base.Initialize();
-            
+
             // Add our command handlers for menu (commands must exist in the .vsct file)
             OleMenuCommandService mcs = GetService(typeof(IMenuCommandService)) as OleMenuCommandService;
             if (null != mcs)
@@ -68,23 +89,23 @@ namespace OlegShilo.LineMan
                 // Create the command for the menu item.
 
                 CommandID menuCommandID = new CommandID(GuidList.guidLineManCmdSet, (int)PkgCmdIDList.cmdidDuplicateLine);
-                MenuCommand menuItem = new MenuCommand((s, e) =>
-                                                              ExecutePlugin(txtxMgr => new DuplicateLineVSX(txtxMgr).Execute()), menuCommandID);
+                MenuCommand menuItem = new MenuCommand((s, e) => ExecutePlugin(txtxMgr => new DuplicateLineVSX(txtxMgr).Execute()), menuCommandID);
+                mcs.AddCommand(menuItem);
+
+                menuCommandID = new CommandID(GuidList.guidLineManCmdSet, (int)PkgCmdIDList.cmdidCommentDuplicateLine);
+                menuItem = new MenuCommand((s, e) => ExecutePlugin(txtxMgr => new DuplicateLineVSX(txtxMgr).Execute(true)), menuCommandID);
                 mcs.AddCommand(menuItem);
 
                 menuCommandID = new CommandID(GuidList.guidLineManCmdSet, (int)PkgCmdIDList.cmdidDeleteLine);
-                menuItem = new MenuCommand((s, e) =>
-                                                  ExecutePlugin(txtxMgr => new DeleteLineVSX(txtxMgr).Execute()), menuCommandID);
+                menuItem = new MenuCommand((s, e) => ExecutePlugin(txtxMgr => new DeleteLineVSX(txtxMgr).Execute()), menuCommandID);
                 mcs.AddCommand(menuItem);
 
                 menuCommandID = new CommandID(GuidList.guidLineManCmdSet, (int)PkgCmdIDList.cmdidLineUp);
-                menuItem = new MenuCommand((s, e) =>
-                                                  ExecutePlugin(txtxMgr => new MoveLineVSX(txtxMgr).Execute(true)), menuCommandID);
+                menuItem = new MenuCommand((s, e) => ExecutePlugin(txtxMgr => new MoveLineVSX(txtxMgr).Execute(true)), menuCommandID);
                 mcs.AddCommand(menuItem);
 
-                menuCommandID = new CommandID(GuidList.guidLineManCmdSet, (int)PkgCmdIDList.cmdidLineDown);
-                menuItem = new MenuCommand((s, e) =>
-                                                  ExecutePlugin(txtxMgr => new MoveLineVSX(txtxMgr).Execute(false)), menuCommandID);
+                menuCommandID = new CommandID(GuidList.guidLineManCmdSet, (int)PkgCmdIDList.cmdidToggleComments);
+                menuItem = new MenuCommand((s, e) => ExecutePlugin(txtxMgr => new ToggleCommenting(txtxMgr).Execute()), menuCommandID);
                 mcs.AddCommand(menuItem);
             }
         }

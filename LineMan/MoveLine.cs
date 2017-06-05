@@ -81,7 +81,7 @@ namespace OlegShilo.LineMan
             }
 
             int insertionPosition;
-            int finalCaretPosition;
+            //int finalCaretPosition;
 
             using (ITextEdit edit = textView.TextBuffer.CreateEdit())
             {

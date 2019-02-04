@@ -139,7 +139,7 @@
     <KeyBinding guid="guidLineManCmdSet" id="cmdidLineMan1" key1="VK_DELETE" mod1="Control Shift" editor="guidVSStd97" />
     <KeyBinding guid="guidLineManCmdSet" id="cmdidLineMan2" key1="VK_UP" mod1="Alt" editor="guidVSStd97" />
     <KeyBinding guid="guidLineManCmdSet" id="cmdidLineMan3" key1="VK_DOWN" mod1="Alt" editor="guidVSStd97" />
-    <!--<KeyBinding guid="guidLineManCmdSet" id="cmdidLineMan4" key1="0xBF" mod1="Control" editor="guidVSStd97" />-->
+    <KeyBinding guid="guidLineManCmdSet" id="cmdidLineMan4" key1="0xBF" mod1="Control" editor="guidVSStd97" />
   </KeyBindings>
 
   <Symbols>

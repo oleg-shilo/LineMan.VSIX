@@ -1,16 +1,16 @@
-﻿using EnvDTE;
-using EnvDTE80;
-using Microsoft.VisualStudio.Shell;
-using Microsoft.VisualStudio.Shell.Interop;
-using Microsoft.VisualStudio.Text.Operations;
-using Microsoft.VisualStudio.Text.Outlining;
-using Microsoft.VisualStudio.TextManager.Interop;
-using System;
+﻿using System;
 using System.ComponentModel.Composition;
 using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.InteropServices;
+using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
+using Microsoft.VisualStudio.Text.Operations;
+using Microsoft.VisualStudio.Text.Outlining;
+using Microsoft.VisualStudio.TextManager.Interop;
+using EnvDTE;
+using EnvDTE80;
 
 namespace OlegShilo.LineMan
 {
@@ -104,6 +104,10 @@ namespace OlegShilo.LineMan
                 menuItem = new MenuCommand((s, e) => ExecutePlugin(txtxMgr => new MoveLineVSX(txtxMgr).Execute(true)), menuCommandID);
                 mcs.AddCommand(menuItem);
 
+                menuCommandID = new CommandID(GuidList.guidLineManCmdSet, (int)PkgCmdIDList.cmdidLineDown);
+                menuItem = new MenuCommand((s, e) => ExecutePlugin(txtxMgr => new MoveLineVSX(txtxMgr).Execute(false)), menuCommandID);
+                mcs.AddCommand(menuItem);
+
                 menuCommandID = new CommandID(GuidList.guidLineManCmdSet, (int)PkgCmdIDList.cmdidToggleComments);
                 menuItem = new MenuCommand((s, e) => ExecutePlugin(txtxMgr => new ToggleCommenting(txtxMgr).Execute()), menuCommandID);
                 mcs.AddCommand(menuItem);
@@ -133,17 +137,17 @@ namespace OlegShilo.LineMan
             Guid clsid = Guid.Empty;
             int result;
             Microsoft.VisualStudio.ErrorHandler.ThrowOnFailure(uiShell.ShowMessageBox(
-                       0,
-                       ref clsid,
-                       "LineMan",
-                       message,
-                       string.Empty,
-                       0,
-                       OLEMSGBUTTON.OLEMSGBUTTON_OK,
-                       OLEMSGDEFBUTTON.OLEMSGDEFBUTTON_FIRST,
-                       OLEMSGICON.OLEMSGICON_INFO,
-                       0,        // false
-                       out result));
+                      0,
+                      ref clsid,
+                      "LineMan",
+                      message,
+                      string.Empty,
+                      0,
+                      OLEMSGBUTTON.OLEMSGBUTTON_OK,
+                      OLEMSGDEFBUTTON.OLEMSGDEFBUTTON_FIRST,
+                      OLEMSGICON.OLEMSGICON_INFO,
+                      0,        // false
+                      out result));
         }
     }
 }

@@ -4,6 +4,7 @@ using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.InteropServices;
+using System.Threading;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using Microsoft.VisualStudio.Text.Operations;
@@ -11,11 +12,14 @@ using Microsoft.VisualStudio.Text.Outlining;
 using Microsoft.VisualStudio.TextManager.Interop;
 using EnvDTE;
 using EnvDTE80;
+using Task = System.Threading.Tasks.Task;
 
 namespace OlegShilo.LineMan
 {
     class Global
     {
+        public int index { get; set; }
+
         public static Func<Type, object> GetService;
 
         public static DTE2 GetDTE2()
@@ -44,7 +48,7 @@ namespace OlegShilo.LineMan
     /// </summary>
     // This attribute tells the PkgDef creation utility (CreatePkgDef.exe) that this class is
     // a package.
-    [PackageRegistration(UseManagedResourcesOnly = true)]
+    [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
 
     // This attribute is used to register the information needed to show this package
     // in the Help/About dialog of Visual Studio.
@@ -53,7 +57,7 @@ namespace OlegShilo.LineMan
     // This attribute is needed to let the shell know that this package exposes some menus.
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [Guid(GuidList.guidLineManPkgString)]
-    public sealed class LineManPackage : Package
+    public sealed class LineManPackage : AsyncPackage
     {
         /// <summary>
         /// Default constructor of the package.
@@ -73,14 +77,19 @@ namespace OlegShilo.LineMan
 
         #region Package Members
 
-        /// <summary>
-        /// Initialization of the package; this method is called right after the package is sited, so this is the place
-        /// where you can put all the initialization code that rely on services provided by VisualStudio.
-        /// </summary>
-        protected override void Initialize()
+        protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
+        {
+            //Global.Package = this;
+
+            // When initialized asynchronously, the current thread may be a background thread at this point.
+            // Do any initialization that requires the UI thread after switching to the UI thread.
+            await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+            InitializePackage();
+        }
+
+        void InitializePackage()
         {
             //Debug.WriteLine(string.Format(CultureInfo.CurrentCulture, "Entering Initialize() of: {0}", this.ToString()));
-            base.Initialize();
 
             // Add our command handlers for menu (commands must exist in the .vsct file)
             OleMenuCommandService mcs = GetService(typeof(IMenuCommandService)) as OleMenuCommandService;

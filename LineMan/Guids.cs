@@ -1,5 +1,4 @@
-﻿// Guids.cs
-// MUST match guids.h
+﻿// Guids.cs MUST match guids.h
 using System;
 
 namespace OlegShilo.LineMan

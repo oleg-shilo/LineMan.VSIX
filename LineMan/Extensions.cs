@@ -8,9 +8,27 @@ using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Text.Formatting;
 using Microsoft.VisualStudio.TextManager.Interop;
 using EnvDTE;
+using EnvDTE80;
+using LineMan;
 
 namespace OlegShilo.LineMan
 {
+    class Global
+    {
+        public static DTE2 GetDTE2()
+        {
+            DTE dte = (DTE)LineManPackage.GetService(typeof(DTE));
+            DTE2 dte2 = dte as DTE2;
+
+            if (dte2 == null)
+            {
+                return null;
+            }
+
+            return dte2;
+        }
+    }
+
     static class Extensions
     {
         internal static void RefreshCommentForCurrentDocument()

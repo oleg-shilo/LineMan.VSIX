@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="6ca2ecdf-a32a-45b3-b507-a0aac4fcb5a8" Version="1.0.10" Language="en-US" Publisher="Oleg Shilo" />
+        <Identity Id="6ca2ecdf-a32a-45b3-b507-a0aac4fcb5a8" Version="1.1.0" Language="en-US" Publisher="Oleg Shilo" />
         <DisplayName>LineMan</DisplayName>
         <Description xml:space="preserve">Line Manipulation gadgets for VS2019-22
 Move Line Up, Move Line Down, Duplicate Line, Delete Line, Toggle Comments</Description>

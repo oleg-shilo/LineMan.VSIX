@@ -1,11 +1,11 @@
 using System;
+using System.Linq;
 using System.Text;
 using Microsoft.VisualStudio.Editor;
 using Microsoft.VisualStudio.Text;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.Text.Formatting;
 using Microsoft.VisualStudio.TextManager.Interop;
-using System.Linq;
 
 namespace OlegShilo.LineMan
 {
@@ -52,6 +52,9 @@ namespace OlegShilo.LineMan
 
                 string textOffset = new string(' ', nonSelectedTextLeftOffset);
                 string duplicatedText = textOffset + selectedText;
+
+                if (!OptionPageGrid.MultiLineSelectionOnly)
+                    duplicatedText = blockText;
 
                 string replacementText;
 

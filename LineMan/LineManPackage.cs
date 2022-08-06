@@ -1,11 +1,13 @@
-﻿using Microsoft.VisualStudio.Shell;
-using Microsoft.VisualStudio.Shell.Interop;
-using System;
+﻿using System;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Threading;
+using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
+using LineMan;
 using Task = System.Threading.Tasks.Task;
 
-namespace LineMan
+namespace OlegShilo.LineMan
 {
     /// <summary>
     /// This is the class that implements the package exposed by this assembly.
@@ -27,6 +29,7 @@ namespace LineMan
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [Guid(LineManPackage.PackageGuidString)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
+    [ProvideOptionPage(typeof(OptionPageGrid), "LineMan", "Options", 0, 0, true)]
     public sealed class LineManPackage : AsyncPackage
     {
         static public Func<Type, object> GetService;
@@ -87,5 +90,19 @@ namespace LineMan
         }
 
         #endregion Package Members
+    }
+
+    public class OptionPageGrid : DialogPage
+    {
+        public static bool MultiLineSelectionOnly = false;
+
+        [Category("Multi-line duplication options")]
+        [DisplayName("Selection Only")]
+        [Description("Duplicate only the selection content if selection goes over multiple lines.")]
+        public bool MultiLineSelectionOnlyProp
+        {
+            get { return MultiLineSelectionOnly; }
+            set { MultiLineSelectionOnly = value; }
+        }
     }
 }

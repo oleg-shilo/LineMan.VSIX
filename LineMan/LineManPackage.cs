@@ -6,6 +6,9 @@ using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using LineMan;
 using Task = System.Threading.Tasks.Task;
+using System.IO;
+using System.Collections.Generic;
+using System.Text;
 
 namespace OlegShilo.LineMan
 {
@@ -92,17 +95,81 @@ namespace OlegShilo.LineMan
         #endregion Package Members
     }
 
+    static class OptionsStorage
+    {
+        static string settingsFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "LineMan.settings");
+
+        // VS does not load settings until the options dialog is opened.
+        // interestingly enough `LoadSettingsFromStorage`does not read the same data that is loaded/saved from options dialog
+        public static OptionPageGrid Load(this OptionPageGrid options)
+        {
+            try
+            {
+                if (File.Exists(settingsFile))
+                {
+                    var lines = File.ReadAllLines(settingsFile);
+                    options.MultiLineSelectionOnly = bool.Parse(lines[0]);
+
+                    options.DuplicationPlacement = (OptionPageGrid.Placement)Enum.Parse(typeof(OptionPageGrid.Placement), lines[1]);
+                }
+            }
+            catch { }
+            return options;
+        }
+
+        public static OptionPageGrid Save(this OptionPageGrid options)
+        {
+            try
+            {
+                var lines = new StringBuilder();
+                lines.AppendLine(options.MultiLineSelectionOnly.ToString());
+                lines.AppendLine(options.DuplicationPlacement.ToString());
+                File.WriteAllText(settingsFile, lines.ToString());
+            }
+            catch { }
+            return options;
+        }
+    }
+
     public class OptionPageGrid : DialogPage
     {
-        public static bool MultiLineSelectionOnly = false;
+        public OptionPageGrid()
+        {
+            this.Load();
+        }
 
-        [Category("Multi-line duplication options")]
+        static OptionPageGrid()
+        {
+            Instance = new OptionPageGrid();
+        }
+
+        static public OptionPageGrid Instance;
+
+        public enum Placement
+        {
+            Below,
+            Above
+        }
+
+        public bool MultiLineSelectionOnly = false;
+        public Placement DuplicationPlacement = Placement.Below;
+
+        [Category("Duplication options")]
         [DisplayName("Selection Only")]
-        [Description("Duplicate only the selection content if selection goes over multiple lines.")]
+        [Description("Duplicate only the selection content. Otherwise whole line.")]
         public bool MultiLineSelectionOnlyProp
         {
             get { return MultiLineSelectionOnly; }
-            set { MultiLineSelectionOnly = value; }
+            set { MultiLineSelectionOnly = value; this.Save(); }
+        }
+
+        [Category("Duplication options")]
+        [DisplayName("Selection Placement")]
+        [Description("Set default placement of duplication above the line with the caret.")]
+        public Placement DuplicationPlacementProp
+        {
+            get { return DuplicationPlacement; }
+            set { DuplicationPlacement = value; this.Save(); }
         }
     }
 }

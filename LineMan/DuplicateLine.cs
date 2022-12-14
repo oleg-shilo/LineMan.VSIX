@@ -18,7 +18,7 @@ namespace OlegShilo.LineMan
             this.txtMgr = txtMgr;
         }
 
-        public void Execute(bool commentOriginal = false)
+        public void Execute(bool commentOriginal, bool forceAbovePlacement)
         {
             IWpfTextView textView = txtMgr.GetTextView();
 
@@ -28,6 +28,10 @@ namespace OlegShilo.LineMan
                 return;
 
             Extensions.RefreshCommentForCurrentDocument();
+
+            bool placeAbove = (OptionPageGrid.Instance.DuplicationPlacement == OptionPageGrid.Placement.Above);
+            if (forceAbovePlacement)
+                placeAbove = true;
 
             if (!textView.Selection.IsEmpty)
             {
@@ -53,7 +57,7 @@ namespace OlegShilo.LineMan
                 string textOffset = new string(' ', nonSelectedTextLeftOffset);
                 string duplicatedText = textOffset + selectedText;
 
-                if (!OptionPageGrid.MultiLineSelectionOnly)
+                if (!OptionPageGrid.Instance.MultiLineSelectionOnly)
                     duplicatedText = blockText;
 
                 string replacementText;
@@ -62,11 +66,17 @@ namespace OlegShilo.LineMan
                 {
                     var commentedText = blockText.Comment();
 
-                    replacementText = commentedText + Environment.NewLine + duplicatedText;
+                    if (!placeAbove)
+                        replacementText = commentedText + Environment.NewLine + duplicatedText;
+                    else
+                        replacementText = duplicatedText + Environment.NewLine + commentedText;
                 }
                 else
                 {
-                    replacementText = blockText + Environment.NewLine + duplicatedText;
+                    if (!placeAbove)
+                        replacementText = blockText + Environment.NewLine + duplicatedText;
+                    else
+                        replacementText = duplicatedText + Environment.NewLine + blockText;
                 }
 
                 using (ITextEdit edit = textView.TextBuffer.CreateEdit())
@@ -81,9 +91,16 @@ namespace OlegShilo.LineMan
                 int newSelectionLength = Math.Min(selectedText.Length, textView.GetText().Length - newSelectionStart);
 
                 textView.Selection.Clear();
-                textView.SetSelection(newSelectionStart, newSelectionLength);
-
-                textView.MoveCaretTo(firstDuplicatedTextLine.Start.Position + caretPositionWithinBlock);
+                if (!placeAbove)
+                {
+                    textView.SetSelection(newSelectionStart, newSelectionLength);
+                    textView.MoveCaretTo(firstDuplicatedTextLine.Start.Position + caretPositionWithinBlock);
+                }
+                else
+                {
+                    textView.SetSelection(selectionStart.Position, selectionEnd.Position - selectionStart.Position);
+                    textView.MoveCaretTo(selectionStart.Position);
+                }
             }
             else
             {
@@ -97,9 +114,16 @@ namespace OlegShilo.LineMan
                 string replacementText;
 
                 if (commentOriginal)
-                    replacementText = text.CommentText(text.IndexOfNonWhitespace(), true) + Environment.NewLine + text;
+                {
+                    if (!placeAbove)
+                        replacementText = text.CommentText(text.IndexOfNonWhitespace(), true) + Environment.NewLine + text;
+                    else
+                        replacementText = text + Environment.NewLine + text.CommentText(text.IndexOfNonWhitespace(), true);
+                }
                 else
+                {
                     replacementText = text + Environment.NewLine + text;
+                }
 
                 using (ITextEdit edit = textView.TextBuffer.CreateEdit())
                 {
@@ -107,7 +131,11 @@ namespace OlegShilo.LineMan
                     edit.Apply();
                 }
 
-                var line = textView.GetLine(selectionLastLineNumber + 1);
+                var newSelectedLineNumber = selectionLastLineNumber;
+                if (!placeAbove)
+                    newSelectedLineNumber++;
+
+                var line = textView.GetLine(newSelectedLineNumber);
 
                 textView.MoveCaretTo(line.Start.Position + caretLineOffset);
                 return;

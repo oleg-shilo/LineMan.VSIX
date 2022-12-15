@@ -52,6 +52,9 @@
     <Compile Include="JoinLines.cs" />
     <Compile Include="LineManCommand.cs" />
     <Compile Include="MoveLine.cs" />
+    <Compile Include="OptionsStorage.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="LineManPackage.cs" />
     <Compile Include="ToggleCommenting.cs" />

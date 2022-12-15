@@ -1,14 +1,12 @@
-﻿using System;
-using System.ComponentModel;
-using System.Runtime.InteropServices;
-using System.Threading;
+﻿using LineMan;
+using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
-using LineMan;
+using System;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Windows.Threading;
 using Task = System.Threading.Tasks.Task;
-using System.IO;
-using System.Collections.Generic;
-using System.Text;
 
 namespace OlegShilo.LineMan
 {
@@ -31,11 +29,12 @@ namespace OlegShilo.LineMan
     /// </remarks>
     [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [Guid(LineManPackage.PackageGuidString)]
+    [ProvideAutoLoad(UIContextGuids80.SolutionExists, PackageAutoLoadFlags.BackgroundLoad)]
     [ProvideMenuResource("Menus.ctmenu", 1)]
-    [ProvideOptionPage(typeof(OptionPageGrid), "LineMan", "Options", 0, 0, true)]
+    [ProvideOptionPage(typeof(Options), "LineMan", "Options", 0, 0, true)]
     public sealed class LineManPackage : AsyncPackage
     {
-        static public Func<Type, object> GetService;
+        static public new Func<Type, object> GetService;
 
         public LineManPackage()
         {
@@ -70,6 +69,15 @@ namespace OlegShilo.LineMan
             // UI thread.
             await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
             await LineManCommand.InitializeAsync(this);
+
+
+            // In the current hosting model of VS auto-loading is problematic
+            // Thus we may not be subscribe for OnSave event until the extension loading is triggered by the first use of the
+            // extension functionality
+            // https://learn.microsoft.com/en-us/visualstudio/extensibility/loading-vspackages?view=vs-2022
+            // Note at least in VS v17.4.2 'UIContextGuids80.SolutionExists' does not work.
+            var runningDocumentTable = new RunningDocumentTable(this);
+            runningDocumentTable.Advise(new FormatDocumentOnBeforeSave());
         }
 
         public static void MessageBoxShow(string message)
@@ -95,81 +103,43 @@ namespace OlegShilo.LineMan
         #endregion Package Members
     }
 
-    static class OptionsStorage
+    internal class FormatDocumentOnBeforeSave : IVsRunningDocTableEvents3
     {
-        static string settingsFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "LineMan.settings");
-
-        // VS does not load settings until the options dialog is opened.
-        // interestingly enough `LoadSettingsFromStorage`does not read the same data that is loaded/saved from options dialog
-        public static OptionPageGrid Load(this OptionPageGrid options)
+        public int OnBeforeSave(uint docCookie)
         {
-            try
-            {
-                if (File.Exists(settingsFile))
+            ThreadHelper.ThrowIfNotOnUIThread();
+
+            foreach (var command in (Options.Instance.ExecuteOnSave ?? "").Split(','))
+                try
                 {
-                    var lines = File.ReadAllLines(settingsFile);
-                    options.MultiLineSelectionOnly = bool.Parse(lines[0]);
+                    // Global.GetDTE2().ExecuteCommand("Edit.FormatDocument", String.Empty);
+                    // may need to run it from different thread otherwise the command is not
+                    // executed (e.g. immediately after `ITextEdit.Apply(...)`)
 
-                    options.DuplicationPlacement = (OptionPageGrid.Placement)Enum.Parse(typeof(OptionPageGrid.Placement), lines[1]);
+                    Task.Run(() =>
+                        Dispatcher.CurrentDispatcher.Invoke(() =>
+                            Global.GetDTE2().ExecuteCommand(command, String.Empty)));
                 }
-            }
-            catch { }
-            return options;
+                catch { }
+
+            return VSConstants.S_OK;
         }
 
-        public static OptionPageGrid Save(this OptionPageGrid options)
-        {
-            try
-            {
-                var lines = new StringBuilder();
-                lines.AppendLine(options.MultiLineSelectionOnly.ToString());
-                lines.AppendLine(options.DuplicationPlacement.ToString());
-                File.WriteAllText(settingsFile, lines.ToString());
-            }
-            catch { }
-            return options;
-        }
-    }
+        public int OnAfterFirstDocumentLock(uint docCookie, uint dwRDTLockType, uint dwReadLocksRemaining, uint dwEditLocksRemaining) => VSConstants.S_OK;
 
-    public class OptionPageGrid : DialogPage
-    {
-        public OptionPageGrid()
-        {
-            this.Load();
-        }
+        public int OnBeforeLastDocumentUnlock(uint docCookie, uint dwRDTLockType, uint dwReadLocksRemaining, uint dwEditLocksRemaining) => VSConstants.S_OK;
 
-        static OptionPageGrid()
-        {
-            Instance = new OptionPageGrid();
-        }
+        public int OnAfterSave(uint docCookie) => VSConstants.S_OK;
 
-        static public OptionPageGrid Instance;
+        public int OnAfterAttributeChange(uint docCookie, uint grfAttribs) => VSConstants.S_OK;
 
-        public enum Placement
-        {
-            Below,
-            Above
-        }
+        public int OnBeforeDocumentWindowShow(uint docCookie, int fFirstShow, IVsWindowFrame pFrame) => VSConstants.S_OK;
 
-        public bool MultiLineSelectionOnly = false;
-        public Placement DuplicationPlacement = Placement.Below;
+        public int OnAfterDocumentWindowHide(uint docCookie, IVsWindowFrame pFrame) => VSConstants.S_OK;
 
-        [Category("Duplication options")]
-        [DisplayName("Selection Only")]
-        [Description("Duplicate only the selection content. Otherwise whole line.")]
-        public bool MultiLineSelectionOnlyProp
-        {
-            get { return MultiLineSelectionOnly; }
-            set { MultiLineSelectionOnly = value; this.Save(); }
-        }
+        public int OnAfterAttributeChangeEx(uint docCookie, uint grfAttribs, IVsHierarchy pHierOld, uint itemidOld, string pszMkDocumentOld, IVsHierarchy pHierNew, uint itemidNew, string pszMkDocumentNew) => VSConstants.S_OK;
 
-        [Category("Duplication options")]
-        [DisplayName("Selection Placement")]
-        [Description("Set default placement of duplication above the line with the caret.")]
-        public Placement DuplicationPlacementProp
-        {
-            get { return DuplicationPlacement; }
-            set { DuplicationPlacement = value; this.Save(); }
-        }
+        public void OnAfterDocumentLockCountChanged(uint docCookie, uint dwRDTLockType, uint dwOldLockCount, uint dwNewLockCount)
+        { }
     }
 }

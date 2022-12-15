@@ -29,7 +29,7 @@ namespace OlegShilo.LineMan
 
             Extensions.RefreshCommentForCurrentDocument();
 
-            bool placeAbove = (OptionPageGrid.Instance.DuplicationPlacement == OptionPageGrid.Placement.Above);
+            bool placeAbove = (Options.Instance.DuplicationPlacement == Options.Placement.Above);
             if (forceAbovePlacement)
                 placeAbove = true;
 
@@ -57,7 +57,7 @@ namespace OlegShilo.LineMan
                 string textOffset = new string(' ', nonSelectedTextLeftOffset);
                 string duplicatedText = textOffset + selectedText;
 
-                if (!OptionPageGrid.Instance.MultiLineSelectionOnly)
+                if (!Options.Instance.MultiLineSelectionOnly)
                     duplicatedText = blockText;
 
                 string replacementText;
